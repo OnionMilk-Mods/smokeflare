@@ -1,7 +1,5 @@
 ﻿using System.Collections;
-using GameNetcodeStuff;
 using UnityEngine;
-using UnityEngine.UIElements;
 
 namespace OnionMilk_smokeflare
 {
@@ -9,16 +7,29 @@ namespace OnionMilk_smokeflare
 	{
 		private Light light;
 
-		private void Awake()
+		private void Start()
 		{
 			var particles = GetComponent<ParticleSystem>();
 			light = GetComponentInChildren<Light>();
-
+			
 			StartCoroutine(FadeOut(particles.main.duration));
+		}
+
+		public void PlayNoise()
+		{
+			RoundManager.Instance.PlayAudibleNoise(
+				transform.position,
+				Plugin.cfgNoiseRange.Value,
+				Plugin.cfgNoiseLoudness.Value,
+				1,
+				StartOfRound.Instance.hangarDoorsClosed
+			);
 		}
 
 		private IEnumerator FadeOut(float duration)
 		{
+			PlayNoise();
+			
 			float startIntensity = light.intensity;
 			float startFade = duration * 0.25f;
 			float timer = duration;

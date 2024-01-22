@@ -18,6 +18,10 @@ namespace OnionMilk_smokeflare
 		public static ConfigEntry<bool> cfgEnabled;
 		public static ConfigEntry<float> cfgDuration;
 		public static ConfigEntry<float> cfgRange;
+		public static ConfigEntry<float> cfgRarity;
+
+		public static ConfigEntry<float> cfgNoiseRange;
+		public static ConfigEntry<float> cfgNoiseLoudness;
 
 		public static GameObject[] prefabs;
 
@@ -39,9 +43,28 @@ namespace OnionMilk_smokeflare
 				"Settings",
 				"duration",
 				10f,
+				"Rarity of flare soawning"
+			);
+			cfgRarity = Config.Bind(
+				"Settings",
+				"rarity",
+				20f,
 				"Duration of flare flaming"
 			);
-			
+
+			cfgNoiseRange = Config.Bind(
+				"Settings",
+				"noiseRange",
+				10f,
+				"Noise range of flare alarming enemies"
+			);
+			cfgNoiseLoudness = Config.Bind(
+				"Settings",
+				"rarity",
+				0.5f,
+				"Noise loudness of flare alarming enemies"
+			);
+
 			cfgEnabled = Config.Bind(
 				"General",
 				"enabled",
@@ -68,21 +91,20 @@ namespace OnionMilk_smokeflare
 					var main = p.main;
 					main.duration = cfgDuration.Value;
 
-					prefabs[i].AddComponent<SmokeLightFade>();
 					NetworkPrefabs.RegisterNetworkPrefab(prefabs[i]);
 				}
 			}
 			
 			NetworkPrefabs.RegisterNetworkPrefab(prefab);
 			Utilities.FixMixerGroups(prefab);
-			Items.RegisterScrap(itm, 10, Levels.LevelTypes.MarchLevel | Levels.LevelTypes.OffenseLevel);
-			Items.RegisterScrap(itm, 30, Levels.LevelTypes.VowLevel | Levels.LevelTypes.ExperimentationLevel | Levels.LevelTypes.AssuranceLevel);
-			Items.RegisterScrap(itm, 20, Levels.LevelTypes.TitanLevel | Levels.LevelTypes.RendLevel | Levels.LevelTypes.DineLevel);
+			Items.RegisterScrap(itm, Mathf.RoundToInt(1f * cfgRarity.Value), Levels.LevelTypes.MarchLevel | Levels.LevelTypes.OffenseLevel);
+			Items.RegisterScrap(itm, Mathf.RoundToInt(3f * cfgRarity.Value), Levels.LevelTypes.VowLevel | Levels.LevelTypes.ExperimentationLevel | Levels.LevelTypes.AssuranceLevel);
+			Items.RegisterScrap(itm, Mathf.RoundToInt(2f * cfgRarity.Value), Levels.LevelTypes.TitanLevel | Levels.LevelTypes.RendLevel | Levels.LevelTypes.DineLevel);
 
 			TerminalNode node = ScriptableObject.CreateInstance<TerminalNode>();
 			node.clearPreviousText = true;
 			node.displayText = "Smoke Flare";
-			//Items.RegisterShopItem(itm, null, null, node, 1);
+			//Items.RegisterShopItem(itm, null, null, node, 20);
 			
 			_harmony.PatchAll();
 			Log($"Mod is loaded!");
@@ -117,6 +139,8 @@ namespace HealthMetrics.Patches
 	[HarmonyPatch(typeof(GrabbableObject))]
 	internal class GrabbableObjectPatches
 	{
+		private static System.Random rnd = null;
+		
 		private static Color[] colors = new Color[]
 		{
 			Color.red,
@@ -133,10 +157,13 @@ namespace HealthMetrics.Patches
 		{
 			if(__instance is StunGrenadeItem stun)
 			{
+				if(rnd == null)
+					rnd = new System.Random(StartOfRound.Instance.randomMapSeed - 2137);
+
 				var renderer = __instance.transform.Find("model/RetopoGroup1").GetComponent<MeshRenderer>();
 				Material newMat = new(renderer.sharedMaterial);
 
-				int idx = UnityEngine.Random.Range(0, Plugin.prefabs.Length);
+				int idx = rnd.Next(Plugin.prefabs.Length);
 				Color clr = colors[idx];
 				newMat.SetColor("_BaseColor", clr);
 
@@ -173,6 +200,8 @@ namespace HealthMetrics.Patches
 					smoke.transform.SetParent(__instance.transform);
 					smoke.transform.forward = __instance.transform.right;
 
+					__instance.gameObject.AddComponent<SmokeLightFade>();
+					
 					if(thrownByFld == null)
 						thrownByFld = typeof(StunGrenadeItem)
 							.GetField(
@@ -243,7 +272,6 @@ namespace HealthMetrics.Patches
 				time -= Time.deltaTime;
 			}
 			bee.SwitchToBehaviourState(0);
-			Plugin.Log("Bee returning!");
 
 		}
 	}
